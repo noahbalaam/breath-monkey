@@ -1,0 +1,37 @@
+{% extends 'home/base.html' %}
+{% load static %}
+
+{% block content %}
+  <h1>My Breathing Stats</h1>
+
+  <p>Total Time: {{ total_time }} seconds</p>
+
+  {% if stats %}
+    <table>
+      <thead>
+        <tr>
+          <th>Technique</th>
+          <th>Session Duration (sec)</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for session in stats %}
+          <tr>
+            <td>
+              {% if session.technique %}
+                {{ session.technique.name }}
+              {% else %}
+                No Technique
+              {% endif %}
+            </td>
+            <td>{{ session.session_duration }}</td>
+            <td>{{ session.timestamp|date:"Y-m-d H:i" }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p>No sessions recorded yet.</p>
+  {% endif %}
+{% endblock %}

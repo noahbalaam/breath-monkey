@@ -1,0 +1,378 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Breath</title>
+  <style>
+    /* Reset & basic styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #f0f4f8;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      color: #333;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .controls {
+      margin-bottom: 90px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+    }
+    select,
+    button {
+      padding: 10px 15px;
+      font-size: 1em;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      outline: none;
+    }
+    select {
+      padding: 12px 40px 12px 15px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background: #fff;
+      color: #333;
+      cursor: pointer;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      transition: all 0.3s ease;
+      outline: none;
+      appearance: none; /* Removes default arrow */
+      background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="%23333" d="M7 10l5 5 5-5z"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 14px;
+      padding-right: 36px; /* Space for the custom arrow */
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    /* Hover Effect */
+    select:hover {
+      border-color: #aaa;
+    }
+
+    /* Focus Effect */
+    select:focus {
+      border-color: #007aff;
+      box-shadow: 0 0 8px rgba(0, 122, 255, 0.5);
+      outline: none;
+    }
+
+    /* Style for when dropdown is open */
+    select:active,
+    select:focus-visible {
+      background-color: #f8f9fa;
+    }
+    
+    button {
+      background: #2575fc;
+      color: white;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+    button:hover {
+      background: #1a5bb8;
+    }
+    .breathing-container {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      margin-bottom: 20px;
+    }
+    .circle {
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, #6a11cb, #2575fc);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: scale(1);
+      transition: transform 4s linear;
+      color: white;
+      font-size: 2em;
+      user-select: none;
+    }
+    @keyframes swirl {
+      to {
+        transform: rotate(360deg);  
+      }
+    }
+    .instructions {
+      font-size: 1.5em;
+      margin-top: 90px;
+    }
+    .countdown {
+      font-size: 1.2em;
+      margin-top: 50px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Breath</h1>
+  <div class="controls">
+    <!-- Breathing Technique Selector -->
+    <select id="techniqueSelect">
+      <option value="box">Box Breath (4-4-4-4)</option>
+      <option value="478">4-7-8 Breathing</option>
+      <option value="buteyko">Buteyko Breathing</option>
+      <option value="heart">Heart Coherence Breathing</option>
+      <option value="wimhof">Wim Hof Breathing</option>
+    </select>
+    <!-- Circle Color Theme Selector -->
+    <select id="colorSelect">
+      <option value="default">Default</option>
+      <option value="red">Red</option>
+      <option value="green">Green</option>
+      <option value="purple">Purple</option>
+      <option value="blue">Blue</option>
+    </select>
+    <!-- Soundscape Selector -->
+    <select id="soundscapeSelect">
+      <option value="none">No Soundscape</option>
+      <option value="white-noise">White Noise</option>
+      <option value="forest">Forest</option>
+      <option value="ocean">Ocean</option>
+      <option value="rain">Rain</option>
+    </select>
+    <button id="startButton">Start</button>
+    <button id="stopButton" disabled>Stop</button>
+  </div>
+  <div class="breathing-container">
+    <div class="circle" id="circle"></div>
+  </div>
+  <div class="instructions" id="instructionText">
+    Select a technique and press Start
+  </div>
+  <div class="countdown" id="countdownText"></div>
+
+  <script>
+    // Audio for breathing cues
+    const inhaleSound = new Audio("{% static 'home/inhale.mp3' %}");
+    const exhaleSound = new Audio("{% static 'home/exhale.mp3' %}");
+    const holdSound = new Audio("{% static 'home/hold.mp3' %}");
+
+    // Audio for soundscapes
+    const soundscapeSources = {
+      forest: "{% static 'home/soundscape_forest.mp3' %}",
+      ocean: "{% static 'home/soundscape_ocean.mp3' %}",
+      rain: "{% static 'home/soundscape_rain.mp3' %}"
+    };
+    let soundscapeAudio = null;
+
+    // Play functions for breathing cues
+    function playInhaleSound() {
+      new Audio("{% static 'home/inhale.mp3' %}").play();
+    }
+
+    function playExhaleSound() {
+      new Audio("{% static 'home/exhale.mp3' %}").play();
+    }
+
+    function playHoldSound() {
+      new Audio("{% static 'home/hold.mp3' %}").play();
+    }
+
+    // Breathing techniques and their phases
+    const techniques = {
+      box: {
+        phases: [
+          { name: "Inhale", duration: 4 },
+          { name: "Hold", duration: 4 },
+          { name: "Exhale", duration: 4 },
+          { name: "Hold", duration: 4 }
+        ]
+      },
+      478: {
+        phases: [
+          { name: "Inhale", duration: 4 },
+          { name: "Hold", duration: 7 },
+          { name: "Exhale", duration: 8 }
+        ]
+      },
+      buteyko: {
+        phases: [
+          { name: "Inhale", duration: 3 },
+          { name: "Exhale", duration: 3 },
+          { name: "Hold", duration: 2 }
+        ]
+      },
+      heart: {
+        phases: [
+          { name: "Inhale", duration: 5 },
+          { name: "Exhale", duration: 5 }
+        ]
+      },
+      wimhof: {
+        phases: [
+          { name: "Inhale", duration: 3 },
+          { name: "Exhale", duration: 3 },
+          { name: "Hold", duration: 15 }
+        ]
+      }
+    };
+
+    // Color themes for the circle
+    const colorThemes = {
+      default: "radial-gradient(circle, #6a11cb, #2575fc)",
+      red: "radial-gradient(circle, #FF512F, #DD2476)",
+      green: "radial-gradient(circle, #56ab2f, #a8e063)",
+      purple: "radial-gradient(circle, #8E2DE2, #4A00E0)",
+      blue: "radial-gradient(circle, #2980B9, #6DD5FA)"
+    };
+
+    // UI Elements
+    const circle = document.getElementById("circle");
+    const instructionText = document.getElementById("instructionText");
+    const countdownText = document.getElementById("countdownText");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
+    const techniqueSelect = document.getElementById("techniqueSelect");
+    const colorSelect = document.getElementById("colorSelect");
+    const soundscapeSelect = document.getElementById("soundscapeSelect");
+
+    // State variables
+    let currentTechnique = null;
+    let currentPhaseIndex = 0;
+    let phaseTimer = null;
+    let countdownInterval = null;
+    let isRunning = false;
+
+    startButton.addEventListener("click", startBreathing);
+    stopButton.addEventListener("click", stopBreathing);
+    colorSelect.addEventListener("change", updateCircleColor);
+
+    // Set the initial circle color
+    updateCircleColor();
+
+    function updateCircleColor() {
+      const selectedColor = colorSelect.value;
+      circle.style.background = colorThemes[selectedColor] || colorThemes.default;
+    }
+
+    function startBreathing() {
+      if (isRunning) return;
+
+      // Set the chosen soundscape (if any)
+      const selectedSoundscape = soundscapeSelect.value;
+      if (selectedSoundscape !== "none") {
+        soundscapeAudio = new Audio(soundscapeSources[selectedSoundscape]);
+        soundscapeAudio.loop = true;
+        soundscapeAudio.volume = 0.2;
+        soundscapeAudio.play();
+      }
+
+      // Update circle color based on selection
+      updateCircleColor();
+
+      // Start the chosen breathing technique
+      const selectedValue = techniqueSelect.value;
+      currentTechnique = techniques[selectedValue];
+      currentPhaseIndex = 0;
+      isRunning = true;
+      startButton.disabled = true;
+      stopButton.disabled = false;
+      runNextPhase();
+    }
+
+    function stopBreathing() {
+      isRunning = false;
+      startButton.disabled = false;
+      stopButton.disabled = true;
+      clearTimeout(phaseTimer);
+      clearInterval(countdownInterval);
+      instructionText.textContent = "Breathing session stopped.";
+      countdownText.textContent = "";
+      // Reset circle to its default state
+      circle.style.transition = "transform 0.5s linear";
+      circle.style.transform = "scale(1)";
+      circle.textContent = "";
+      
+      // Stop the soundscape if playing
+      if (soundscapeAudio) {
+        soundscapeAudio.volume = 0.2;
+        soundscapeAudio.pause();
+        soundscapeAudio.currentTime = 0;
+
+        soundscapeAudio = null;
+      }
+    }
+
+    function runNextPhase() {
+      if (!isRunning) return;
+      const phase = currentTechnique.phases[currentPhaseIndex];
+      let targetScale;
+
+      if (phase.name === "Inhale") playInhaleSound();
+      if (phase.name === "Hold") playHoldSound();
+      if (phase.name === "Exhale") playExhaleSound();
+      // Play corresponding sound cues
+      if (phase.name === "Inhale") {
+        playInhaleSound();
+        targetScale = 1.5;
+      } else if (phase.name === "Exhale") {
+        playExhaleSound();
+        targetScale = 1;
+      } else if (phase.name === "Hold") {
+        playHoldSound();
+        // Hold maintains the scale from the previous phase
+        const prevIndex = (currentPhaseIndex - 1 + currentTechnique.phases.length) % currentTechnique.phases.length;
+        const prevPhase = currentTechnique.phases[prevIndex];
+        targetScale = prevPhase.name === "Inhale" ? 1.5 : 1;
+      }
+
+      // Update instructions and display phase inside the circle
+      instructionText.textContent = phase.name;
+      circle.textContent = phase.name;
+
+      // Animate the circle when inhaling or exhaling
+      if (phase.name === "Inhale" || phase.name === "Exhale") {
+        circle.style.transition = `transform ${phase.duration}s linear`;
+        // Force reflow for a smooth transition
+        void circle.offsetWidth;
+        circle.style.transform = `scale(${targetScale})`;
+      } else {
+        // For hold phases, remove the transition so the circle remains static
+        circle.style.transition = "none";
+        circle.style.transform = `scale(${targetScale})`;
+      }
+
+      // Countdown timer for the current phase
+      let secondsLeft = phase.duration;
+      countdownText.textContent = secondsLeft + "s";
+      clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        secondsLeft--;
+        countdownText.textContent = secondsLeft > 0 ? secondsLeft + "s" : "";
+        if (secondsLeft <= 0) {
+          clearInterval(countdownInterval);
+        }
+      }, 1000);
+
+      // Proceed to the next phase after the current duration
+      phaseTimer = setTimeout(() => {
+        currentPhaseIndex = (currentPhaseIndex + 1) % currentTechnique.phases.length;
+        runNextPhase();
+      }, phase.duration * 1000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+<h2>Base Techniques</h2>
+<ul>
+  {% for technique in global_techniques %}
+    <li>{{ technique.name }}: In {{ technique.in_time }}s, Hold {{ technique.hold_time }}s, Out {{ technique.out_time }}s</li>
+  {% endfor %}
+</ul>
+
+<h2>Your Custom Techniques</h2>
+<ul>
+  {% for technique in user_techniques %}
+    <li>{{ technique.name }}: In {{ technique.in_time }}s, Hold {{ technique.hold_time }}s, Out {{ technique.out_time }}s</li>
+  {% endfor %}
+</ul>

@@ -1,0 +1,316 @@
+
+    /* THIS MUSTVE BEEN FROM home.html */
+    /* Reset & basic styles */
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: #dadada;
+        font-family: 'Arial', sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        min-height: 100vh;
+        text-align: center;
+        color: #333;
+        padding: 20px;
+        /* We no longer rely on justify-content: center here 
+           because we want the .controls on the left and the 
+           circle in the center. We'll let container elements 
+           handle their own alignment. */
+      }
+      h1 {
+        
+        -webkit-text-stroke: 1.5px red;
+                color: rgb(19, 191, 3); /* the inner text color */
+
+        /* Hide the built-in text stroke or set it to a single fallback color: */
+        -webkit-text-stroke: 1px transparent; 
+
+        /* Then layer multiple shadows in different colors. Adjust the offsets 
+            and blur to get the effect you want. This example is just for illustration. */
+        text-shadow: 
+            0 0 2px red,
+            0 0 6px yellow,
+            0 0 10px green,
+            0 0 14px cyan;
+        font-size: 50px;
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        margin-top:10px ;
+        margin-bottom: 15px;
+        
+      }
+      .controls {
+        /* This container will hold the Start/Stop on the left 
+           and everything else naturally flows to the right if there's space. */
+        width: 100%;
+        max-width: 1000px;
+        margin-bottom: 90px;
+        display: flex;
+        flex-wrap: wrap;
+        
+        gap: 20px;
+        justify-content: center; /* Buttons on the left */
+        margin-left: auto;
+        margin-right: auto; /* Center the whole controls row if narrower than 800px */
+      }
+      button, select {
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        padding: 10px 15px;
+        font-size: 1em;
+        margin: 5px 0;
+        border: none;
+        border-radius: 5px;
+        outline: none;
+      }
+      select {
+        padding: 12px 40px 12px 15px;
+        border: 1.5px solid;
+        border-color: red yellow green hsla(60, 90%, 50%, .8);
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        border-radius: 8px;
+        background: #ffffff;
+        color: #1c0ac1;
+        cursor: pointer;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"><path fill="%23333" d="M7 10l5 5 5-5z"/></svg>');
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        background-size: 14px;
+        padding-right: 36px;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        appearance: none; /* Removes default arrow in some browsers */
+      }
+      select:hover {
+        border-color: #aaa;
+      }
+      select:focus {
+        border-color: #007aff;
+        box-shadow: 0 0 8px rgba(0, 122, 255, 0.5);
+      }
+      button {
+        background: #2575fc;
+        border: 1.5px solid;
+        border-color: red yellow green hsla(60, 90%, 50%, .8);
+        color: white;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+      button:hover {
+        background: #1a5bb8;
+      }
+      .breathing-container {
+        position: relative;
+        width: 300px;
+        height: 300px;
+        margin-bottom: 20px;
+        margin: 0 auto; /* Center this container horizontally */
+      }
+      .circle {
+        border: 2px solid #000; /* or keep your existing multi-color border, if you prefer */
+        border-color: red yellow green; 
+        background: radial-gradient(circle, red 20%, yellow 60%, green 100%);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #fff;
+        font-size: 2em;
+        user-select: none;
+        transition: transform 4s linear; /* If you still want the breathing animation to expand/contract */
+      }
+      @keyframes swirl {
+        to {
+          transform: rotate(360deg);  
+        }
+      }
+      .instructions {
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 1.5em;
+        margin-top: 80px;
+      }
+      .countdown {
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        font-size: 1.2em;
+        margin-top: 20px;
+      }
+      .animated-box {
+        padding-bottom: 15px;
+        font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        animation: slideInLeft 2s ease-in-out;
+        }
+        @keyframes slideInLeft {
+        from {
+          opacity: 0;
+          transform: translateX(-100px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+   /* THIS MUSTVE BEEN FROM base.html */
+      .overlay {
+        height: 100%;
+        width: 100%;
+        display: none;
+        position: fixed;
+        z-index: 1;
+        top: 0;
+        left: 0;
+        background-color: rgb(175, 176, 251);
+        background-color: rgba(0,0,0, 0.9);
+      }
+  
+      .overlay-content {
+        position: relative;
+        top: 25%;
+        width: 100%;
+        text-align: center;
+        margin-top: 30px;
+      }
+  
+      .overlay a {
+        padding: 8px;
+        text-decoration: none;
+        font-size: 36px;
+        color: #818181;
+        display: block;
+        transition: 0.3s;
+      }
+  
+      .overlay a:hover, .overlay a:focus {
+        color: #f1f1f1;
+      }
+  
+      .overlay .closebtn {
+        position: absolute;
+        top: 20px;
+        right: 45px;
+        font-size: 60px;
+      }
+  /* THIS MUSTVE BEEN FROM newbreath.html */
+    @media screen and (max-height: 450px) {
+      .overlay a {font-size: 70px}
+      .overlay .closebtn {
+      font-size: 90px;
+      top: 15px;
+      right: 35px;
+      }
+    }    
+  
+    body {
+      background: #f0f4f8; /* same as main page */
+      font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #333;
+      margin: 0;
+      padding: 20px;
+    }
+    .exit-button {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+  }
+  
+  .exit-link {
+      text-decoration: none;
+      color: #333;
+      font-weight: bold;
+      padding: 8px 12px;
+      background: #eee;
+      border-radius: 50%;
+      display: inline-block;
+      transition: background 0.3s ease;
+  }
+  
+  .exit-link:hover {
+      background: #ccc;
+  }
+  
+    /* Center an overall container/card */
+    .profile-container {
+      max-width: 600px;
+      margin: 40px auto;
+      background: #fff;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+      padding: 20px 30px;
+      text-align: center;
+    }
+  
+    .profile-container h1 {
+      margin-bottom: 20px;
+      font-size: 1.8rem;
+    }
+  
+    /* Form styling */
+    form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      margin-top: 20px;
+    }
+  
+    label {
+      text-align: left;
+      font-weight: bold;
+      margin-bottom: 6px;
+      display: block;
+    }
+  
+    input[type="text"],
+    input[type="number"] {
+      padding: 10px;
+      font-size: 1em;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+  
+    /* For multiple intervals, you could group them in fieldsets if you wish */
+    .interval-group {
+      background: #fafafa;
+      padding: 15px 10px;
+      border-radius: 6px;
+      border: 1px solid #eee;
+      margin-bottom: 10px;
+    }
+  
+    .interval-group h2 {
+      margin: 0 0 10px 0;
+      font-size: 1.2rem;
+    }
+  
+    /* If you eventually want a button */
+    .submit-button {
+      padding: 12px 20px;
+      font-size: 1rem;
+      border: none;
+      border-radius: 6px;
+      background: #2575fc;
+      color: #fff;
+      cursor: pointer;
+      transition: background 0.3s ease;
+      margin-top: 10px;
+      width: 100%;
+    }
+    .submit-button:hover {
+      background: #1a5bb8;
+    }
+  
+    /* A small helper text or note */
+    .hint-text {
+      font-size: 0.9rem;
+      color: #777;
+      text-align: left;
+      margin-top: 2px;
+    }
+      
+   

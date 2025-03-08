@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Breath</title>
+  <style>
+    /* Reset & basic styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #f0f4f8;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+      color: #333;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .controls {
+      margin-bottom: 20px;
+    }
+    select,
+    button {
+      padding: 10px 15px;
+      font-size: 1em;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+    }
+    button {
+      background: #2575fc;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #1a5bb8;
+    }
+    .breathing-container {
+      position: relative;
+      width: 300px;
+      height: 300px;
+      margin-bottom: 20px;
+    }
+    .circle {
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(circle, #6a11cb, #2575fc);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform: scale(1);
+      transition: transform 4s linear;
+      color: white;
+      font-size: 2em;
+      user-select: none;
+    }
+    .instructions {
+      font-size: 1.5em;
+      margin-top: 10px;
+    }
+    .countdown {
+      font-size: 1.2em;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Breath</h1>
+  <div class="controls">
+    <select id="techniqueSelect">
+      <option value="box">Box Breath (4-4-4-4)</option>
+      <option value="478">4-7-8 Breathing</option>
+      <option value="buteyko">Buteyko Breathing</option>
+      <option value="heart">Heart Coherence Breathing</option>
+      <option value="wimhof">Wim Hof Breathing</option>
+    </select>
+    <button id="startButton">Start</button>
+    <button id="stopButton" disabled>Stop</button>
+  </div>
+  <div class="breathing-container">
+    <div class="circle" id="circle"></div>
+  </div>
+  <div class="instructions" id="instructionText">
+    Select a technique and press Start
+  </div>
+  <div class="countdown" id="countdownText"></div>
+
+  <script>
+    // Define breathing techniques and their phases
+    const techniques = {
+      box: {
+        phases: [
+          { name: "Inhale", duration: 4 },
+          { name: "Hold", duration: 4 },
+          { name: "Exhale", duration: 4 },
+          { name: "Hold", duration: 4 }
+        ]
+      },
+      478: {
+        phases: [
+          { name: "Inhale", duration: 4 },
+          { name: "Hold", duration: 7 },
+          { name: "Exhale", duration: 8 }
+        ]
+      },
+      buteyko: {
+        // A simplified cycle for demonstration
+        phases: [
+          { name: "Inhale", duration: 3 },
+          { name: "Exhale", duration: 3 },
+          { name: "Hold", duration: 2 }
+        ]
+      },
+      heart: {
+        phases: [
+          { name: "Inhale", duration: 5 },
+          { name: "Exhale", duration: 5 }
+        ]
+      },
+      wimhof: {
+        // A simplified cycle approximating a Wim Hof round
+        phases: [
+          { name: "Inhale", duration: 3 },
+          { name: "Exhale", duration: 3 },
+          { name: "Hold", duration: 15 }
+        ]
+      }
+    };
+
+    // UI Elements
+    const circle = document.getElementById("circle");
+    const instructionText = document.getElementById("instructionText");
+    const countdownText = document.getElementById("countdownText");
+    const startButton = document.getElementById("startButton");
+    const stopButton = document.getElementById("stopButton");
+    const techniqueSelect = document.getElementById("techniqueSelect");
+
+    // State variables
+    let currentTechnique = null;
+    let currentPhaseIndex = 0;
+    let phaseTimer = null;
+    let countdownInterval = null;
+    let isRunning = false;
+
+    startButton.addEventListener("click", startBreathing);
+    stopButton.addEventListener("click", stopBreathing);
+
+    function startBreathing() {
+      if (isRunning) return;
+      const selectedValue = techniqueSelect.value;
+      currentTechnique = techniques[selectedValue];
+      currentPhaseIndex = 0;
+      isRunning = true;
+      startButton.disabled = true;
+      stopButton.disabled = false;
+      runNextPhase();
+    }
+
+    function stopBreathing() {
+      isRunning = false;
+      startButton.disabled = false;
+      stopButton.disabled = true;
+      clearTimeout(phaseTimer);
+      clearInterval(countdownInterval);
+      instructionText.textContent = "Breathing session stopped.";
+      countdownText.textContent = "";
+      // Reset circle to its default state
+      circle.style.transition = "transform 0.5s linear";
+      circle.style.transform = "scale(1)";
+      circle.textContent = "";
+    }
+
+    function runNextPhase() {
+      if (!isRunning) return;
+      const phase = currentTechnique.phases[currentPhaseIndex];
+      let targetScale;
+
+      // Determine target scale based on the phase
+      if (phase.name === "Inhale") {
+        targetScale = 1.5;
+      } else if (phase.name === "Exhale") {
+        targetScale = 1;
+      } else if (phase.name === "Hold") {
+        // For hold, keep the scale from the previous phase
+        const prevIndex =
+          (currentPhaseIndex - 1 + currentTechnique.phases.length) %
+          currentTechnique.phases.length;
+        const prevPhase = currentTechnique.phases[prevIndex];
+        targetScale = prevPhase.name === "Inhale" ? 1.5 : 1;
+      }
+
+      // Update instructions and show a hint inside the circle
+      instructionText.textContent = phase.name;
+      circle.textContent = phase.name.charAt(0); // E.g., "I", "H", or "E"
+
+      // Animate the circle if breathing in or out
+      if (phase.name === "Inhale" || phase.name === "Exhale") {
+        circle.style.transition = `transform ${phase.duration}s linear`;
+        // Force reflow for a smooth transition
+        void circle.offsetWidth;
+        circle.style.transform = `scale(${targetScale})`;
+      } else {
+        // For hold phases, remove the transition so the circle stays static
+        circle.style.transition = "none";
+        circle.style.transform = `scale(${targetScale})`;
+      }
+
+      // Set up the countdown timer for the current phase
+      let secondsLeft = phase.duration;
+      countdownText.textContent = secondsLeft + "s";
+      clearInterval(countdownInterval);
+      countdownInterval = setInterval(() => {
+        secondsLeft--;
+        countdownText.textContent = secondsLeft > 0 ? secondsLeft + "s" : "";
+        if (secondsLeft <= 0) {
+          clearInterval(countdownInterval);
+        }
+      }, 1000);
+
+      // Move to the next phase after the current duration
+      phaseTimer = setTimeout(() => {
+        currentPhaseIndex =
+          (currentPhaseIndex + 1) % currentTechnique.phases.length;
+        runNextPhase();
+      }, phase.duration * 1000);
+    }
+  </script>
+</body>
+</html>

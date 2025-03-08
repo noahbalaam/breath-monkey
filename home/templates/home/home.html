@@ -1,0 +1,355 @@
+{% extends 'home/base.html' %}
+{% load static %}
+
+{% block title %}Breath{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="{% static 'css/' %}{{ css_file|default:'styles.css' }}">
+<style>
+
+</style>
+
+<h1> Breath Monkey 🐵</h1>
+<div class="animated-box">Take a Deep Breath</div>
+<div class="controls">
+  <!-- Start and Stop on the left -->
+  <button id="startButton">Start</button>
+  <button id="stopButton" disabled>Stop</button>
+  
+  <!-- Profile button (if you still want it in the controls) -->
+  <button onclick="window.location.href='{% url 'profile' %}'">
+    Profile
+  </button>
+
+  <button onclick="window.location.href='{% url 'new' %}'">
+    New
+  </button>
+  
+
+  <!-- Breathing Technique Selector -->
+  <select id="techniqueSelect">
+    {% for technique in techniques %}
+      <option value="{{ technique.id }}">{{ technique.name }}</option>
+    {% endfor %}
+  </select>
+
+  <!-- Circle Color Theme Selector -->
+  <select id="colorSelect">
+    <option value="default">Default</option>
+    <option value="red">Red</option>
+    <option value="green">Green</option>
+    <option value="purple">Purple</option>
+    <option value="blue">Blue</option>
+    <option value="reggae">Reggae</option>
+  </select>
+
+  <!-- Soundscape Selector -->
+  <select id="soundscapeSelect">
+    <option value="none">No Soundscape</option>
+    <option value="white_noise">White Noise</option>
+    <option value="forest">Forest</option>
+    <option value="ocean">Ocean</option>
+    <option value="rain">Rain</option>
+  </select>
+
+  <select id="breathingSelect">
+    <option value="emerald_sound">Emerald</option>
+    <option value="default_sound">Default</option>
+  </select>
+</div>
+
+<div class="breathing-container">
+  <div class="circle" id="circle"></div>
+</div>
+
+<div class="instructions" id="instructionText">
+  Select a technique and press Start
+</div>
+
+<div class="countdown" id="countdownText"></div>
+
+<div class="countdown" id="bpmDisplay">BPM:</div>
+
+<form id="breathingForm" method="POST" action="{% url 'record_breathing_session' %}">
+  {% csrf_token %}
+  <!-- We'll populate these with JavaScript -->
+  <input type="hidden" id="techniqueIdField" name="technique_id" value="">
+  <input type="hidden" id="durationField" name="duration" value="">
+</form>
+
+<script>
+  const techniquesData = {
+    {% for technique in techniques %}
+      "{{ technique.id }}": {
+        "name": "{{ technique.name }}",
+        "phases": [
+          {% for phase in technique.phases.all %}
+            { "name": "{{ phase.name }}", "duration": {{ phase.duration }} }{% if not forloop.last %},{% endif %}
+          {% endfor %}
+        ]
+      }{% if not forloop.last %},{% endif %}
+    {% endfor %}
+  };
+</script>
+
+<script>
+   // UI Elements
+   const circle = document.getElementById("circle");
+  const instructionText = document.getElementById("instructionText");
+  const countdownText = document.getElementById("countdownText");
+  const startButton = document.getElementById("startButton");
+  const stopButton = document.getElementById("stopButton");
+  const techniqueSelect = document.getElementById("techniqueSelect");
+  const colorSelect = document.getElementById("colorSelect");
+  const soundscapeSelect = document.getElementById("soundscapeSelect");
+  const breathingSelect = document.getElementById("breathingSelect");
+  
+  let startTime = null
+  
+  // Audio for breathing cues
+  function playInhaleSound() {
+  const selectedBreathingSound = breathingSelect.value;
+
+  // Always play the short "inhaleCue"
+  const inhaleCue = new Audio("{% static 'home/inhale.mp3' %}");
+  inhaleCue.play();
+
+  // Then play the "inhale" background track if defined
+  if (breathingSounds[selectedBreathingSound] &&
+      breathingSounds[selectedBreathingSound].inhale) {
+    const inhaleSoundscape = new Audio(breathingSounds[selectedBreathingSound].inhale);
+    inhaleSoundscape.volume = 0.1;
+    inhaleSoundscape.play();
+  }
+}
+
+
+  function playExhaleSound() {
+  const selectedBreathingSound = breathingSelect.value;
+
+    // Always play the short "exhaleCue"
+  const exhaleCue = new Audio("{% static 'home/exhale.mp3' %}");
+  exhaleCue.play();
+
+    // Then play the "exhale" background track if defined
+  if (breathingSounds[selectedBreathingSound] &&
+    breathingSounds[selectedBreathingSound].exhale) {
+    const exhaleSoundscape = new Audio(breathingSounds[selectedBreathingSound].exhale);
+    exhaleSoundscape.volume = 0.1;
+    exhaleSoundscape.play();
+  }
+  }
+  
+  breathingSelect.addEventListener("change", function () {
+    console.log("Breathing sound changed to:", breathingSelect.value);
+});
+  function playHoldSound() {
+    const holdCue = new Audio("{% static 'home/hold.mp3' %}");
+    holdCue.play();
+  }
+
+  const breathingSounds = {
+  emerald_sound: {
+    inhale: "{% static 'home/inhale_soundscape.mp3' %}",
+    exhale: "{% static 'home/exhale_soundscape.mp3' %}"
+  },
+  default_sound: {
+    inhale: "{% static 'home/soundscape_forest_inhale.mp3' %}",
+    exhale: "{% static 'home/soundscape_forest_exhale.mp3' %}"
+  }
+};
+
+  // Audio for soundscapes
+  const soundscapeSources = {
+    white_noise: "{% static 'home/soundscape_white_noise.mp3' %}",
+    forest: "{% static 'home/soundscape_forest.mp3' %}",
+    ocean: "{% static 'home/soundscape_ocean.mp3' %}",
+    rain: "{% static 'home/soundscape_rain.mp3' %}"
+  };
+  let soundscapeAudio = null;
+
+  // Color themes for the circle
+  const colorThemes = {
+    default: "radial-gradient(circle, #b26bff, #2575fc)",
+    red: "radial-gradient(circle, #fc6072, #DD2476)",
+    green: "radial-gradient(circle, #b26bff, #a8e063)",
+    purple: "radial-gradient(circle, #b26bff, #4A00E0)",
+    blue: "radial-gradient(circle, #b26bff, #6DD5FA)",
+    reggae: "linear-gradient(to right,  #f5302a 33%, #f5d742 33% 66%, #17d12a 66%)"
+  };
+
+  // UI Elements
+  
+
+  if (breathingSelect) {
+      breathingSelect.addEventListener("change", function () {
+          console.log("Breathing sound changed to:", breathingSelect.value);
+      });
+  } else {
+      console.error("Error: breathingSelect element not found!");
+  }
+
+
+  // State variables
+  let currentTechnique = null;
+  let currentPhaseIndex = 0;
+  let phaseTimer = null;
+  let countdownInterval = null;
+  let isRunning = false;
+
+  startButton.addEventListener("click", startBreathing);
+  stopButton.addEventListener("click", stopBreathing);
+  colorSelect.addEventListener("change", updateCircleColor);
+
+
+  techniqueSelect.addEventListener("change", updateBPM);
+
+  function updateBPM(){
+    
+    // 2. Get the selected technique ID
+    let selectedTechniqueId = techniqueSelect.value;
+    // 3. Fetch the technique data from techniquesData
+    let technique = techniquesData[selectedTechniqueId];
+
+    if (!technique) {
+      bpmDisplay.textContent = "BPM: —";
+      return;
+    }
+
+    // 4. Sum up the durations in that technique
+    let totalDuration = 0;
+    technique.phases.forEach(phase => {
+      totalDuration += phase.duration; // or parseInt(phase.duration) if needed
+    });
+
+    // 5. Calculate BPM = 60 / totalDuration
+    //    (If totalDuration is zero for some reason, guard against division by zero)
+    let bpmValue = totalDuration > 0 ? (60 / totalDuration) : 0;
+
+    // 6. Display the result
+    const bpmText = bpmValue.toFixed(2); // e.g. "4.29"
+    bpmDisplay.textContent = `Breaths Per Minute: ${bpmText}`;
+  }
+  
+
+  // Set the initial circle color
+  updateCircleColor();
+
+  function updateCircleColor() {
+    const selectedColor = colorSelect.value;
+    circle.style.background = colorThemes[selectedColor] || colorThemes.default;
+  }
+
+  function startBreathing() {
+
+    startTime = Date.now();
+    updateBPM();
+    if (isRunning) return;
+
+    // Set the chosen soundscape (if any)
+    const selectedSoundscape = soundscapeSelect.value;
+    if (selectedSoundscape !== "none") {
+      soundscapeAudio = new Audio(soundscapeSources[selectedSoundscape]);
+      soundscapeAudio.loop = true;
+      soundscapeAudio.volume = 0.2;
+      soundscapeAudio.play();
+    }
+    const selectedTechniqueId = techniqueSelect.value;
+    currentTechnique = techniquesData[selectedTechniqueId];
+
+    if (!currentTechnique) {
+      console.error("Error: No breathing technique selected or found.");
+      instructionText.textContent = "Please select a technique.";
+      return;
+    }
+    isRunning = true;
+    startButton.disabled = true;
+    stopButton.disabled = false;
+    runNextPhase();
+  
+}
+  function stopBreathing() {
+    if (!startTime) {
+      return;
+    }
+    const endTime = Date.now();
+    const durationInSeconds = Math.floor((endTime - startTime) / 1000);
+
+    document.getElementById('techniqueIdField').value = techniqueSelect.value;
+    document.getElementById('durationField').value = durationInSeconds;
+    document.getElementById('breathingForm').submit();
+
+    isRunning = false;
+    startButton.disabled = false;
+    stopButton.disabled = true;
+
+    clearTimeout(phaseTimer);
+    clearInterval(countdownInterval);
+
+    instructionText.textContent = "Breathing session stopped.";
+    countdownText.textContent = "";
+    // Reset circle
+    circle.style.transition = "transform 0.5s linear";
+    circle.style.transform = "scale(1)";
+    circle.textContent = "";
+    
+    // Stop the soundscape if playing
+    if (soundscapeAudio) {
+      soundscapeAudio.pause();
+      soundscapeAudio.currentTime = 0;
+      soundscapeAudio = null;
+    }
+  }
+
+  function runNextPhase() {
+    if (!isRunning) return;
+    const phase = currentTechnique.phases[currentPhaseIndex];
+    let targetScale;
+
+    if (phase.name === "Inhale") {
+      playInhaleSound();
+      targetScale = 1.5;
+    } else if (phase.name === "Exhale") {
+      playExhaleSound();
+      targetScale = 1;
+    } else if (phase.name === "Hold") {
+      playHoldSound();
+      // Hold maintains the scale from the previous phase
+      const prevIndex = (currentPhaseIndex - 1 + currentTechnique.phases.length) % currentTechnique.phases.length;
+      const prevPhase = currentTechnique.phases[prevIndex];
+      targetScale = prevPhase.name === "Inhale" ? 1.5 : 1;
+    }
+
+    // Update instructions
+    instructionText.textContent = phase.name;
+    circle.textContent = phase.name;
+
+    if (phase.name === "Inhale" || phase.name === "Exhale") {
+      circle.style.transition = `transform ${phase.duration}s linear`;
+      void circle.offsetWidth; // Force reflow
+      circle.style.transform = `scale(${targetScale})`;
+    } else {
+      circle.style.transition = "none";
+      circle.style.transform = `scale(${targetScale})`;
+    }
+
+    // Countdown
+    let secondsLeft = phase.duration;
+    countdownText.textContent = secondsLeft + "s";
+    clearInterval(countdownInterval);
+    countdownInterval = setInterval(() => {
+      secondsLeft--;
+      countdownText.textContent = secondsLeft > 0 ? secondsLeft + "s" : "";
+      if (secondsLeft <= 0) {
+        clearInterval(countdownInterval);
+      }
+    }, 1000);
+
+    // Move to the next phase
+    phaseTimer = setTimeout(() => {
+      currentPhaseIndex = (currentPhaseIndex + 1) % currentTechnique.phases.length;
+      runNextPhase();
+    }, phase.duration * 1000);
+  }
+</script>
+{% endblock %}

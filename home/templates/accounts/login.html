@@ -1,0 +1,141 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Sign In</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* Basic page reset & structure */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #f0f4f8;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+      color: #333;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    /* A card-like container for the sign-in form */
+    .signin-container {
+      background: #fff;
+      width: 100%;
+      max-width: 400px;
+      border-radius: 10px;
+      padding: 30px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      text-align: center;
+    }
+
+    /* Label & input styles */
+    label {
+      display: block;
+      text-align: left;
+      margin: 10px 0 5px;
+      font-size: 0.9em;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 1em;
+    }
+    input:focus {
+      outline: none;
+      border-color: #007aff;
+      box-shadow: 0 0 8px rgba(0, 122, 255, 0.2);
+    }
+
+    /* Button styling (like your Start/Stop) */
+    .button {
+      display: inline-block;
+      background: #2575fc;
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      font-size: 1em;
+      cursor: pointer;
+      text-decoration: none;
+      margin: 10px auto;
+      transition: background 0.3s;
+    }
+    .button:hover {
+      background: #1a5bb8;
+    }
+
+    .alternative-logins {
+      margin-top: 20px;
+    }
+
+    /* Extra spacing / layout improvements */
+    .form-group {
+      margin: 10px 0;
+      text-align: left;
+    }
+  </style>
+</head>
+<body>
+  <h1>Sign In</h1>
+
+  <div class="signin-container">
+    {# The 'login' form from allauth #}
+    <form method="post" action="{% url 'account_login' %}">
+      {% csrf_token %}
+      {{ form.non_field_errors }}
+
+      <div class="form-group">
+        <label for="id_login">Username or Email</label>
+        {{ form.login }}
+        {{ form.login.errors }}
+      </div>
+
+      <div class="form-group">
+        <label for="id_password">Password</label>
+        {{ form.password }}
+        {{ form.password.errors }}
+      </div>
+
+      {# If you allow "remember me" #}
+      {% if form.remember %}
+        <div class="form-group">
+          <label>
+            {{ form.remember }} Remember Me
+          </label>
+        </div>
+      {% endif %}
+
+      <button class="button" type="submit">Sign In</button>
+    </form>
+
+    <div class="alternative-logins">
+      <!-- If you have Google or other providers, you can add them here -->
+      <a href="{% url 'socialaccount_login' 'google' %}" class="button">
+        Sign In with Google
+      </a>
+      <!-- Additional providers, if desired -->
+    </div>
+
+    {# Links to reset password, signup, etc. #}
+    <p style="margin-top: 15px;">
+      <a href="{% url 'account_reset_password' %}">Forgot Password?</a>
+    </p>
+    <p>
+      Don't have an account? <a href="{% url 'account_signup' %}">Sign up here</a>.
+    </p>
+  </div>
+</body>
+</html>

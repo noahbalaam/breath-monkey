@@ -1,0 +1,55 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>{% block title %}{% endblock %}</title>
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  {% block head %}{% endblock %}
+
+  
+</head>
+
+<body>
+ 
+
+  <!-- Page-specific content (This is where the actual page you are looking at gets put )--> 
+  {% block content %}{% endblock %}
+
+  {% block scripts %}{% endblock %}
+  <div id="myNav" class="overlay">
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()">&times;</a>
+    <div class="overlay-content">
+      <a href="{% url 'home' %}">Home</a>
+      
+      <a href="{% url 'profile' %}">Profile</a>
+      <span style="display:inline-block; height:100px;"></span>
+      <a href="{% url 'reggae' %}" style="color: #000000e6; ">reggae</a>
+      <!-- Add more here -->
+    </div>
+  </div>
+
+
+  <div id="settings-button" style="position: fixed; top: 10px; right: 10px; font-size: 20px; cursor: pointer; z-index: 1000; padding-right: 5%; padding-top: 2%;">
+    <span onclick="openNav()">&#9776; Settings</span>
+  </div>
+
+<script>
+  function openNav() {
+    document.getElementById("myNav").style.display = "block";
+    // If the esc key is pressed, close the menu
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape' || event.keyCode === 27) {
+
+      closeNav()
+  }
+});
+  }
+  
+  function closeNav() {
+    document.getElementById("myNav").style.display = "none";
+  }
+   
+</script>
+ 
+</body>
+  </html>

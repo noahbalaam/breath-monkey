@@ -1,0 +1,79 @@
+{% extends 'home/base.html' %}
+{% load static %}
+{% block content %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Profile</title>
+  <style>
+    /* Match the main page aesthetic */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      background: #f0f4f8;
+      font-family: 'Arial', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 80vh;
+      text-align: center;
+      color: #333;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    .profile-container {
+      background: #fff;
+      width: 100%;
+      max-width: 900px;
+      border-radius: 10px;
+      padding: 50px;
+      box-shadow: 0 20px 18px rgba(0,0,0,0.1);
+    }
+
+    /* Buttons (shared style with home.html) */
+    .button {
+      padding: 10px 15px;
+      font-size: 1em;
+      margin: 5px;
+      border: none;
+      border-radius: 5px;
+      outline: none;
+      background: #2575fc;
+      color: white;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      text-decoration: none; /* remove link underline */
+    }
+    .button:hover {
+      background: #1a5bb8;
+    }
+
+    /* Additional small styling to user info */
+    .profile-info {
+      font-size: 1.2em;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Your Profile</h1>
+  <div class="profile-container">
+    <p class="profile-info" style="margin-bottom: 300px; ">Hello, <strong>{{ request.user.username }}</strong>!</p>
+    <!-- Additional user/profile data can be displayed here -->
+
+    <!-- Link back to home or logout -->
+    <a href="{% url 'home' %}" class="button">Go to Home</a>
+    <a href="{% url 'account_logout' %}" class="button">Logout</a>
+  </div>
+</body>
+</html>
+{% endblock %}
