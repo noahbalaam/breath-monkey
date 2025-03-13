@@ -6,6 +6,34 @@
 {% block content %}
 <link rel="stylesheet" href="{% static 'css/' %}{{ css_file|default:'styles.css' }}">
 <style>
+  /* Shared styles for both visualizations */
+  .hidden {
+    display: none;
+  }
+  
+  /* Circle-specific styles */
+  .circle-container {
+    position: relative;
+    width: 300px;
+    height: 300px;
+    margin: 0 auto 30px;
+  }
+  
+  .circle {
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle, #6a11cb, #2575fc);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transform: scale(1);
+    transition: transform 4s linear;
+    color: white;
+    font-size: 2em;
+    user-select: none;
+  }
+  
   /* Monkey-specific styles */
   .monkey-container {
     position: relative;
@@ -227,16 +255,57 @@
       transform: translateY(-10px);
     }
   }
+  
+  /* Style for the visualization toggle */
+  .viz-toggle {
+    margin: 10px auto;
+    display: flex;
+    justify-content: center;
+    max-width: 300px;
+    background: #f0f4f8;
+    border-radius: 30px;
+    padding: 5px;
+    border: 1px solid #ccc;
+  }
+  
+  .viz-toggle button {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+    font-weight: bold;
+    outline: none;
+  }
+  
+  .viz-toggle button.active {
+    background: #2575fc;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  .viz-toggle button:hover:not(.active) {
+    background: rgba(37, 117, 252, 0.1);
+  }
 </style>
 
 <h1>Breath Monkey 🐵</h1>
 <div class="animated-box">Take a Deep Breath</div>
+
+<!-- Visualization Toggle -->
+<div class="viz-toggle">
+  <button id="circleBtn" class="active">Circle</button>
+  <button id="monkeyBtn">Monkey</button>
+</div>
+
 <div class="controls">
   <!-- Start and Stop on the left -->
   <button id="startButton">Start</button>
   <button id="stopButton" disabled>Stop</button>
   
-  <!-- Profile button (if you still want it in the controls) -->
+  <!-- Profile button -->
   <button onclick="window.location.href='{% url 'profile' %}'">
     Profile
   </button>
@@ -277,8 +346,15 @@
   </select>
 </div>
 
-<!-- Replace the circle with our monkey -->
-<div class="breathing-container">
+<!-- Circle visualization -->
+<div class="breathing-container" id="circleVisualization">
+  <div class="circle-container">
+    <div class="circle" id="circle"></div>
+  </div>
+</div>
+
+<!-- Monkey visualization (initially hidden) -->
+<div class="breathing-container hidden" id="monkeyVisualization">
   <div class="monkey-container" id="monkey">
     <div class="monkey">
       <div class="monkey-head">
@@ -321,6 +397,7 @@
 </form>
 
 <script>
+  // Technique data from Django
   const techniquesData = {
     {% for technique in techniques %}
       "{{ technique.id }}": {
@@ -333,10 +410,11 @@
       }{% if not forloop.last %},{% endif %}
     {% endfor %}
   };
-</script>
-
-<script>
+  
   // UI Elements
+  const circleVisualization = document.getElementById("circleVisualization");
+  const monkeyVisualization = document.getElementById("monkeyVisualization");
+  const circle = document.getElementById("circle");
   const monkeyContainer = document.getElementById("monkey");
   const instructionText = document.getElementById("instructionText");
   const countdownText = document.getElementById("countdownText");
@@ -347,8 +425,58 @@
   const soundscapeSelect = document.getElementById("soundscapeSelect");
   const breathingSelect = document.getElementById("breathingSelect");
   
+  // Visualization toggle buttons
+  const circleBtn = document.getElementById("circleBtn");
+  const monkeyBtn = document.getElementById("monkeyBtn");
+  
   // Put the monkey in lotus position
   monkeyContainer.querySelector('.monkey').classList.add('lotus');
+  
+  // Current visualization mode - 'circle' or 'monkey'
+  let currentViz = 'circle';
+  
+  // Toggle between visualizations
+  circleBtn.addEventListener("click", function() {
+    if (currentViz !== 'circle') {
+      currentViz = 'circle';
+      
+      // Update UI
+      circleBtn.classList.add('active');
+      monkeyBtn.classList.remove('active');
+      
+      // Show/hide visualizations
+      circleVisualization.classList.remove('hidden');
+      monkeyVisualization.classList.add('hidden');
+      
+      // Save preference to localStorage
+      localStorage.setItem('breathAppViz', 'circle');
+    }
+  });
+  
+  monkeyBtn.addEventListener("click", function() {
+    if (currentViz !== 'monkey') {
+      currentViz = 'monkey';
+      
+      // Update UI
+      monkeyBtn.classList.add('active');
+      circleBtn.classList.remove('active');
+      
+      // Show/hide visualizations
+      monkeyVisualization.classList.remove('hidden');
+      circleVisualization.classList.add('hidden');
+      
+      // Save preference to localStorage
+      localStorage.setItem('breathAppViz', 'monkey');
+    }
+  });
+  
+  // Load saved preference if it exists
+  document.addEventListener('DOMContentLoaded', function() {
+    const savedViz = localStorage.getItem('breathAppViz');
+    if (savedViz === 'monkey') {
+      monkeyBtn.click();
+    }
+  });
   
   let startTime = null;
   
@@ -414,6 +542,28 @@
   };
   let soundscapeAudio = null;
 
+  // Color themes for visualizations
+  function updateVisualizationColors() {
+    const selectedColor = colorSelect.value;
+    
+    // Update Circle color
+    if (selectedColor === 'reggae') {
+      circle.style.background = 'linear-gradient(to bottom, #f5302a 33%, #f5d742 33% 66%, #17d12a 66%)';
+    } else {
+      const colorThemes = {
+        default: "radial-gradient(circle, #6a11cb, #2575fc)",
+        red: "radial-gradient(circle, #FF512F, #DD2476)",
+        green: "radial-gradient(circle, #56ab2f, #a8e063)",
+        purple: "radial-gradient(circle, #8E2DE2, #4A00E0)",
+        blue: "radial-gradient(circle, #2980B9, #6DD5FA)"
+      };
+      circle.style.background = colorThemes[selectedColor] || colorThemes.default;
+    }
+    
+    // Update Monkey color
+    updateMonkeyColor();
+  }
+  
   // Color themes for the monkey
   function updateMonkeyColor() {
     const selectedColor = colorSelect.value;
@@ -502,11 +652,11 @@
 
   startButton.addEventListener("click", startBreathing);
   stopButton.addEventListener("click", stopBreathing);
-  colorSelect.addEventListener("change", updateMonkeyColor);
+  colorSelect.addEventListener("change", updateVisualizationColors);
   techniqueSelect.addEventListener("change", updateBPM);
 
-  // Set initial monkey color
-  updateMonkeyColor();
+  // Set initial colors
+  updateVisualizationColors();
 
   function updateBPM() {
     // Get the selected technique ID
@@ -584,6 +734,11 @@
     instructionText.textContent = "Breathing session stopped.";
     countdownText.textContent = "";
     
+    // Reset circle
+    circle.style.transition = "transform 0.5s linear";
+    circle.style.transform = "scale(1)";
+    circle.textContent = "";
+    
     // Reset monkey animations
     monkeyContainer.classList.remove('breathing-in', 'breathing-out', 'breathing-hold');
     
@@ -599,18 +754,20 @@
     if (!isRunning) return;
     const phase = currentTechnique.phases[currentPhaseIndex];
     
-    // Remove all breathing classes first
-    monkeyContainer.classList.remove('breathing-in', 'breathing-out', 'breathing-hold');
-    
+    // Play the sound for the current phase
     if (phase.name === "Inhale") {
       playInhaleSound();
-      monkeyContainer.classList.add('breathing-in');
     } else if (phase.name === "Exhale") {
       playExhaleSound();
-      monkeyContainer.classList.add('breathing-out');
     } else if (phase.name === "Hold") {
       playHoldSound();
-      monkeyContainer.classList.add('breathing-hold');
+    }
+    
+    // Update both Circle and Monkey visualizations
+    if (currentViz === 'circle') {
+      updateCircleVisualization(phase);
+    } else {
+      updateMonkeyVisualization(phase);
     }
 
     // Update instructions
@@ -633,6 +790,53 @@
       currentPhaseIndex = (currentPhaseIndex + 1) % currentTechnique.phases.length;
       runNextPhase();
     }, phase.duration * 1000);
+  }
+  
+  // Circle visualization update
+  function updateCircleVisualization(phase) {
+    let targetScale;
+
+    // Determine target scale based on phase
+    if (phase.name === "Inhale") {
+      targetScale = 1.5;
+    } else if (phase.name === "Exhale") {
+      targetScale = 1;
+    } else if (phase.name === "Hold") {
+      // For hold, keep the scale from the previous phase
+      const prevIndex = (currentPhaseIndex - 1 + currentTechnique.phases.length) % currentTechnique.phases.length;
+      const prevPhase = currentTechnique.phases[prevIndex];
+      targetScale = prevPhase.name === "Inhale" ? 1.5 : 1;
+    }
+    
+    // Update circle text
+    circle.textContent = phase.name;
+    
+    // Animate the circle
+    if (phase.name === "Inhale" || phase.name === "Exhale") {
+      circle.style.transition = `transform ${phase.duration}s linear`;
+      // Force reflow for a smooth transition
+      void circle.offsetWidth;
+      circle.style.transform = `scale(${targetScale})`;
+    } else {
+      // For hold phases, remove the transition so the circle stays static
+      circle.style.transition = "none";
+      circle.style.transform = `scale(${targetScale})`;
+    }
+  }
+  
+  // Monkey visualization update
+  function updateMonkeyVisualization(phase) {
+    // Remove all breathing classes first
+    monkeyContainer.classList.remove('breathing-in', 'breathing-out', 'breathing-hold');
+    
+    // Add the appropriate class for the current phase
+    if (phase.name === "Inhale") {
+      monkeyContainer.classList.add('breathing-in');
+    } else if (phase.name === "Exhale") {
+      monkeyContainer.classList.add('breathing-out');
+    } else if (phase.name === "Hold") {
+      monkeyContainer.classList.add('breathing-hold');
+    }
   }
 </script>
 {% endblock %}
