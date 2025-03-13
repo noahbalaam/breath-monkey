@@ -163,6 +163,8 @@ LOGIN_REDIRECT_URL = '/'        # Where to redirect the user after logging in
 LOGOUT_REDIRECT_URL = '/'       # Where to redirect the user after logging out
 ACCOUNT_LOGOUT_ON_GET = True    # If you want to logout immediately without a confirmation page
 
+SOCIALACCOUNT_LOGIN_ON_GET = True
+
 SOCIALACCOUNT_PROVIDERS = {
     'google': {
         'APP': {
