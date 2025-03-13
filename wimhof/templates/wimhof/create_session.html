@@ -1,0 +1,206 @@
+{% extends 'wimhof/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="wimhof-container">
+  <h1>Create New WimHof Session</h1>
+  
+  <div class="form-container">
+    <form method="POST">
+      {% csrf_token %}
+      
+      <div class="form-group">
+        <label for="{{ form.name.id_for_label }}">Session Name:</label>
+        {{ form.name }}
+        {% if form.name.errors %}
+          <div class="error-message">{{ form.name.errors }}</div>
+        {% endif %}
+      </div>
+      
+      <div class="form-group">
+        <label for="{{ form.round_count.id_for_label }}">Number of Rounds:</label>
+        {{ form.round_count }}
+        {% if form.round_count.errors %}
+          <div class="error-message">{{ form.round_count.errors }}</div>
+        {% endif %}
+        <div class="help-text">{{ form.round_count.help_text }}</div>
+      </div>
+      
+      <div class="form-group">
+        <label for="{{ form.starting_breaths.id_for_label }}">Starting Breath Count:</label>
+        {{ form.starting_breaths }}
+        {% if form.starting_breaths.errors %}
+          <div class="error-message">{{ form.starting_breaths.errors }}</div>
+        {% endif %}
+        <div class="help-text">{{ form.starting_breaths.help_text }}</div>
+      </div>
+      
+      <div class="form-group checkbox-group">
+        {{ form.ramp_up }}
+        <label for="{{ form.ramp_up.id_for_label }}">{{ form.ramp_up.label }}</label>
+        <div class="help-text">{{ form.ramp_up.help_text }}</div>
+      </div>
+      
+      <div class="form-group" id="incrementGroup">
+        <label for="{{ form.breath_increment.id_for_label }}">Breath Increment:</label>
+        {{ form.breath_increment }}
+        {% if form.breath_increment.errors %}
+          <div class="error-message">{{ form.breath_increment.errors }}</div>
+        {% endif %}
+        <div class="help-text">{{ form.breath_increment.help_text }}</div>
+      </div>
+      
+      <div class="session-preview">
+        <h3>Session Preview</h3>
+        <div id="roundsPreview"></div>
+      </div>
+      
+      <div class="form-actions">
+        <button type="submit" class="button primary">Create Session</button>
+        <a href="{% url 'wimhof_home' %}" class="button secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Elements
+  const roundCountInput = document.getElementById('{{ form.round_count.id_for_label }}');
+  const startingBreathsInput = document.getElementById('{{ form.starting_breaths.id_for_label }}');
+  const rampUpCheckbox = document.getElementById('{{ form.ramp_up.id_for_label }}');
+  const breathIncrementInput = document.getElementById('{{ form.breath_increment.id_for_label }}');
+  const incrementGroup = document.getElementById('incrementGroup');
+  const roundsPreview = document.getElementById('roundsPreview');
+  
+  // Event listeners
+  roundCountInput.addEventListener('input', updatePreview);
+  startingBreathsInput.addEventListener('input', updatePreview);
+  rampUpCheckbox.addEventListener('change', updateRampUpVisibility);
+  breathIncrementInput.addEventListener('input', updatePreview);
+  
+  // Initial setup
+  updateRampUpVisibility();
+  updatePreview();
+  
+  function updateRampUpVisibility() {
+    if (rampUpCheckbox.checked) {
+      incrementGroup.style.display = 'block';
+    } else {
+      incrementGroup.style.display = 'none';
+    }
+    updatePreview();
+  }
+  
+  function updatePreview() {
+    const roundCount = parseInt(roundCountInput.value) || 3;
+    const startingBreaths = parseInt(startingBreathsInput.value) || 30;
+    const rampUp = rampUpCheckbox.checked;
+    const increment = rampUp ? (parseInt(breathIncrementInput.value) || 5) : 0;
+    
+    roundsPreview.innerHTML = '';
+    
+    for (let i = 1; i <= roundCount; i++) {
+      const breathCount = startingBreaths + (rampUp ? (i - 1) * increment : 0);
+      
+      const roundDiv = document.createElement('div');
+      roundDiv.className = 'round-preview';
+      roundDiv.innerHTML = `
+        <strong>Round ${i}:</strong> ${breathCount} breaths
+      `;
+      
+      roundsPreview.appendChild(roundDiv);
+    }
+  }
+</script>
+
+<style>
+  .form-container {
+    background: white;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .form-group {
+    margin-bottom: 20px;
+  }
+  
+  label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+  }
+  
+  input[type="text"],
+  input[type="number"],
+  select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+  }
+  
+  .checkbox-group {
+    display: flex;
+    align-items: center;
+  }
+  
+  .checkbox-group label {
+    margin-left: 10px;
+    margin-bottom: 0;
+  }
+  
+  .help-text {
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 5px;
+  }
+  
+  .error-message {
+    color: red;
+    margin-top: 5px;
+    font-size: 0.9rem;
+  }
+  
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  
+  .button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    font-size: 1rem;
+    display: inline-block;
+  }
+  
+  .button.primary {
+    background: #2575fc;
+    color: white;
+  }
+  
+  .button.secondary {
+    background: #f0f4f8;
+    color: #333;
+  }
+  
+  .session-preview {
+    margin-top: 20px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 5px;
+  }
+  
+  .round-preview {
+    margin: 5px 0;
+    padding: 5px 0;
+    border-bottom: 1px solid #eee;
+  }
+</style>
+{% endblock %}

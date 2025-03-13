@@ -1,0 +1,150 @@
+{% extends 'wimhof/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="wimhof-container">
+  <h1>Your WimHof Breathing Statistics</h1>
+  
+  {% if stats %}
+    <div class="stats-grid">
+      {% for stat in stats %}
+        <div class="stat-card">
+          <div class="stat-header">
+            <h3>{{ stat.timestamp|date:"F j, Y" }} at {{ stat.timestamp|time:"g:i A" }}</h3>
+            {% if stat.session %}
+              <div class="session-name">{{ stat.session.name }}</div>
+            {% endif %}
+          </div>
+          
+          <div class="rounds-data">
+            {% for round_key, round_data in stat.round_data.items %}
+              <div class="round-result">
+                <div class="round-name">{{ round_key|title|replace:"_":" " }}</div>
+                <div class="round-stats">
+                  <div class="breath-stat">
+                    <span class="stat-label">Breaths:</span>
+                    <span class="stat-value">{{ round_data.breath_count }}</span>
+                  </div>
+                  <div class="hold-stat">
+                    <span class="stat-label">Hold Time:</span>
+                    <span class="stat-value">
+                      {% with hold_time=round_data.hold_time %}
+                        {% if hold_time >= 60 %}
+                          {{ hold_time|floordiv:60 }}:{{ hold_time|mod:60|stringformat:"02d" }}
+                        {% else %}
+                          0:{{ hold_time|stringformat:"02d" }}
+                        {% endif %}
+                      {% endwith %}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    
+    <div class="pagination">
+      <!-- Pagination controls could go here if needed -->
+    </div>
+  {% else %}
+    <div class="no-stats">
+      <p>You haven't completed any WimHof breathing sessions yet.</p>
+      <a href="{% url 'wimhof_home' %}" class="button primary">Start a Session</a>
+    </div>
+  {% endif %}
+</div>
+
+<style>
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+  }
+  
+  .stat-card {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  }
+  
+  .stat-header {
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .session-name {
+    color: #666;
+    font-style: italic;
+  }
+  
+  .rounds-data {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .round-result {
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 5px;
+  }
+  
+  .round-name {
+    font-weight: bold;
+    margin-bottom: 5px;
+  }
+  
+  .round-stats {
+    display: flex;
+    justify-content: space-between;
+  }
+  
+  .breath-stat, .hold-stat {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .stat-label {
+    font-size: 0.8rem;
+    color: #666;
+  }
+  
+  .stat-value {
+    font-size: 1.1rem;
+    font-weight: bold;
+  }
+  
+  .no-stats {
+    text-align: center;
+    margin-top: 40px;
+    padding: 30px;
+    background: #f9f9f9;
+    border-radius: 10px;
+  }
+  
+  .no-stats p {
+    margin-bottom: 20px;
+    font-size: 1.1rem;
+  }
+  
+  .button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    display: inline-block;
+  }
+  
+  .button.primary {
+    background: #2575fc;
+    color: white;
+  }
+</style>
+
+{% endblock %}

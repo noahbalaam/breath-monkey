@@ -1,0 +1,561 @@
+{% extends 'wimhof/base.html' %}
+{% load static %}
+
+{% block content %}
+<style>
+  .hidden {
+    display: none !important;
+  }
+  
+  .round-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #ddd;
+    margin: 0 5px;
+  }
+  
+  .round-indicator.active {
+    background: #4169E1;
+  }
+  
+  .round-indicator.completed {
+    background: #27ae60;
+  }
+  
+  .breathing-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    height: 1000px;
+
+  }
+  
+  .circle {
+    
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    background-color: #4169E1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 20px;
+    cursor: pointer;
+    transition: transform 1.5s ease, background-color 0.3s ease;
+  }
+  
+  .circle.inhale {
+    transform: scale(1.3);
+  }
+  
+  .circle.hold {
+    background-color: #e74c3c;
+  }
+  
+  .circle.recovery {
+    background-color: #2ecc71;
+  }
+  
+  .round-title {
+    font-size: 24px;
+    margin-bottom: 10px;
+    color: #4169E1;
+  }
+  
+  .breath-counter {
+    font-size: 48px;
+    margin: 20px 0;
+  }
+  
+  .hold-timer {
+    font-size: 36px;
+    font-family: monospace;
+  }
+  
+  .controls {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  }
+  
+  .controls button {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    background-color: #f8f9fa;
+    border: 1px solid #dee2e6;
+    cursor: pointer;
+    color: green;
+  }
+</style>
+
+<div style="text-align: center; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <h1>WimHof Breathing</h1>
+  
+  <!-- Setup Panel -->
+  <div id="setupPanel">
+    <h2>Choose Your Session</h2>
+    
+    <div style="margin: 20px auto; max-width: 300px;">
+      <select id="sessionSelect" style="width: 100%; padding: 10px; margin-bottom: 10px; border-radius: 4px; border: 1px solid #ced4da;">
+        {% for session in sessions %}
+          <option value="{{ session.id }}" {% if selected_session and selected_session.id == session.id %}selected{% endif %}>
+            {{ session.name }}
+          </option>
+        {% endfor %}
+      </select>
+      
+      <a href="{% url 'wimhof_create_session' %}" style="display: block; margin: 10px 0; color: #4169E1; text-decoration: none;">Create New Session</a>
+    </div>
+    
+    {% if selected_session %}
+      <div style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 0 auto; max-width: 300px;">
+        <h3 style="color: #4169E1; margin-bottom: 15px;">{{ selected_session.name }}</h3>
+        
+        <div>
+          {% for round in selected_session.rounds.all %}
+            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #e9ecef;">
+              <span>Round {{ round.round_number }}</span>
+              <span>{{ round.breath_count }} breaths</span>
+            </div>
+          {% endfor %}
+        </div>
+        
+        <button id="startButton" style="width: 100%; padding: 12px; background: #4169E1; color: white; border: none; border-radius: 4px; margin-top: 15px; cursor: pointer;">Start Session</button>
+      </div>
+    {% else %}
+      <p>No sessions available. Please create one to get started.</p>
+    {% endif %}
+  </div>
+  
+  <!-- Breathing Panel -->
+  <div id="breathingPanel" class="hidden breathing-container">
+    <div id="roundProgress" style="display: flex; margin-bottom: 20px;">
+      <!-- Round indicators added dynamically -->
+    </div>
+    
+    <div id="roundTitle" class="round-title">Round 1</div>
+    <div id="stateText" style="margin-bottom: 25px;">Ready</div>
+    
+    <div id="breathCircle" class="circle">
+      <span id="circleText">Start</span>
+    </div>
+    
+    <div id="breathCounter" class="breath-counter">0/0</div>
+    <div id="holdTimer" class="hold-timer"></div>
+    
+    <div class="controls">
+      <button id="pauseButton">Pause</button>
+      <button id="skipButton">Skip</button>
+      <button id="stopButton">End</button>
+    </div>
+  </div>
+  
+  <!-- Results Panel -->
+  <div id="resultsPanel" class="hidden" style="background: white; border-radius: 8px; padding: 20px; margin-top: 20px;">
+    <h2>Session Complete!</h2>
+    <div id="resultsList"></div>
+    
+    <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
+      <button id="saveButton" style="padding: 10px 15px; background: #4169E1; color: white; border: none; border-radius: 4px;">Save Results</button>
+      <button id="restartButton" style="padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">Start Again</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    // DOM Elements
+    const setupPanel = document.getElementById('setupPanel');
+    const breathingPanel = document.getElementById('breathingPanel');
+    const resultsPanel = document.getElementById('resultsPanel');
+    const startButton = document.getElementById('startButton');
+    const breathCircle = document.getElementById('breathCircle');
+    const circleText = document.getElementById('circleText');
+    const breathCounter = document.getElementById('breathCounter');
+    const holdTimer = document.getElementById('holdTimer');
+    const roundTitle = document.getElementById('roundTitle');
+    const roundProgress = document.getElementById('roundProgress');
+    const stateText = document.getElementById('stateText');
+    const pauseButton = document.getElementById('pauseButton');
+    const skipButton = document.getElementById('skipButton');
+    const stopButton = document.getElementById('stopButton');
+    const saveButton = document.getElementById('saveButton');
+    const restartButton = document.getElementById('restartButton');
+    
+    // Session data
+    const sessionData = {
+      rounds: [
+        {% if selected_session %}
+          {% for round in selected_session.rounds.all %}
+            {
+              round: {{ round.round_number }},
+              breathCount: {{ round.breath_count }}
+            }{% if not forloop.last %},{% endif %}
+          {% endfor %}
+        {% else %}
+          { round: 1, breathCount: 20 },
+          { round: 2, breathCount: 30 }
+        {% endif %}
+      ]
+    };
+    
+    // State variables
+    let currentRound = 0;
+    let currentBreath = 0;
+    let breathTarget = 0;
+    let holdingBreath = false;
+    let recoveryBreath = false;
+    let isPaused = false;
+    let holdStartTime = 0;
+    let holdInterval = null;
+    let breathingInterval = null;
+    let recoveryInterval = null;
+    let sessionResults = [];
+    
+    // Sound elements (preload sounds)
+    const inhaleSound = new Audio("{% static 'home/inhale.mp3' %}");
+    const exhaleSound = new Audio("{% static 'home/exhale.mp3' %}");
+    const holdSound = new Audio("{% static 'home/hold.mp3' %}");
+    
+    // Event listeners
+    startButton.addEventListener('click', startSession);
+    breathCircle.addEventListener('click', handleCircleClick);
+    pauseButton.addEventListener('click', togglePause);
+    skipButton.addEventListener('click', skipToHold);
+    stopButton.addEventListener('click', stopSession);
+    saveButton.addEventListener('click', saveResults);
+    restartButton.addEventListener('click', restartSession);
+    
+    // -------- Functions --------
+    
+    // Initialize the round indicators
+    function createRoundIndicators() {
+      roundProgress.innerHTML = '';
+      
+      for (let i = 0; i < sessionData.rounds.length; i++) {
+        const indicator = document.createElement('div');
+        indicator.className = 'round-indicator';
+        if (i === currentRound) {
+          indicator.classList.add('active');
+        }
+        roundProgress.appendChild(indicator);
+      }
+    }
+    
+    // Start the breathing session
+    function startSession() {
+      console.log('Starting session');
+      setupPanel.classList.add('hidden');
+      breathingPanel.classList.remove('hidden');
+      
+      currentRound = 0;
+      startRound();
+    }
+    
+    // Initialize a round
+    function startRound() {
+      console.log('Starting round', currentRound + 1);
+      
+      // Update round indicators
+      createRoundIndicators();
+      
+      // Reset state
+      currentBreath = 0;
+      breathTarget = sessionData.rounds[currentRound].breathCount;
+      holdingBreath = false;
+      recoveryBreath = false;
+      
+      // Update UI
+      roundTitle.textContent = `Round ${currentRound + 1}`;
+      breathCounter.textContent = `0/${breathTarget}`;
+      stateText.textContent = 'Ready';
+      circleText.textContent = 'Start';
+      breathCircle.className = 'circle';
+      holdTimer.textContent = '';
+    }
+    
+    // Handle circle clicks
+    function handleCircleClick() {
+      console.log('Circle clicked, state:', { holdingBreath, recoveryBreath });
+      
+      if (circleText.textContent === 'Start') {
+        // Start breathing
+        startBreathing();
+      } else if (holdingBreath) {
+        // End hold
+        endHold();
+      }
+    }
+    
+    // Start the breathing cycle
+    function startBreathing() {
+      console.log('Starting breathing cycle');
+      
+      // Update UI
+      stateText.textContent = 'Follow the circle';
+      
+      // Start the breathing loop
+      breatheCycle();
+    }
+    
+    // Execute one breathing cycle (inhale + exhale)
+    function breatheCycle() {
+      if (isPaused) return;
+      
+      // Check if we've reached the target
+      if (currentBreath >= breathTarget) {
+        startHold();
+        return;
+      }
+      
+      // Inhale
+      inhaleSound.play().catch(e => console.log('Audio error:', e));
+      breathCircle.classList.add('inhale');
+      circleText.textContent = 'Inhale';
+      stateText.textContent = 'Inhale';
+      
+      // After 1.5s, exhale
+      setTimeout(() => {
+        if (isPaused) return;
+        
+        exhaleSound.play().catch(e => console.log('Audio error:', e));
+        breathCircle.classList.remove('inhale');
+        circleText.textContent = 'Exhale';
+        stateText.textContent = 'Exhale';
+        
+        // Increment breath counter
+        currentBreath++;
+        breathCounter.textContent = `${currentBreath}/${breathTarget}`;
+        
+        // Schedule next breath
+        setTimeout(() => {
+          if (isPaused) return;
+          breatheCycle();
+        }, 1500);
+      }, 1500);
+    }
+    
+    // Start the breath hold phase
+    function startHold() {
+      console.log('Starting hold phase');
+      
+      holdingBreath = true;
+      holdSound.play().catch(e => console.log('Audio error:', e));
+      
+      // Update UI
+      breathCircle.className = 'circle hold';
+      circleText.textContent = 'Click When Ready';
+      stateText.textContent = 'Hold Your Breath';
+      breathCounter.textContent = 'Hold';
+      
+      // Start hold timer
+      holdStartTime = Date.now();
+      holdInterval = setInterval(updateHoldTimer, 1000);
+    }
+    
+    // Update the hold timer
+    function updateHoldTimer() {
+      const elapsed = Math.floor((Date.now() - holdStartTime) / 1000);
+      const minutes = Math.floor(elapsed / 60);
+      const seconds = elapsed % 60;
+      holdTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    }
+    
+    // End the hold phase
+    function endHold() {
+      console.log('Ending hold phase');
+      
+      // Calculate hold duration
+      const holdDuration = Math.floor((Date.now() - holdStartTime) / 1000);
+      clearInterval(holdInterval);
+      
+      // Save the result
+      sessionResults.push({
+        round: currentRound + 1,
+        breathCount: breathTarget,
+        holdTime: holdDuration
+      });
+      
+      // Start recovery
+      startRecovery();
+    }
+    
+    // Start the recovery breath phase
+    function startRecovery() {
+      console.log('Starting recovery phase');
+      
+      holdingBreath = false;
+      recoveryBreath = true;
+      inhaleSound.play().catch(e => console.log('Audio error:', e));
+      
+      // Update UI
+      breathCircle.className = 'circle recovery';
+      circleText.textContent = 'Recovery Breath';
+      stateText.textContent = 'Deep Breath In & Hold';
+      
+      // 15 second recovery
+      let secondsLeft = 15;
+      holdTimer.textContent = secondsLeft;
+      
+      // Start countdown
+      recoveryInterval = setInterval(() => {
+        secondsLeft--;
+        holdTimer.textContent = secondsLeft;
+        
+        if (secondsLeft <= 0) {
+          clearInterval(recoveryInterval);
+          finishRound();
+        }
+      }, 1000);
+    }
+    
+    // Finish the current round
+    function finishRound() {
+      console.log('Finishing round');
+      
+      recoveryBreath = false;
+      
+      // Mark this round as completed
+      const indicators = roundProgress.querySelectorAll('.round-indicator');
+      indicators[currentRound].classList.remove('active');
+      indicators[currentRound].classList.add('completed');
+      
+      // Check if there are more rounds
+      if (currentRound < sessionData.rounds.length - 1) {
+        currentRound++;
+        startRound();
+      } else {
+        showResults();
+      }
+    }
+    
+    // Show the results screen
+    function showResults() {
+      console.log('Showing results');
+      
+      breathingPanel.classList.add('hidden');
+      resultsPanel.classList.remove('hidden');
+      
+      // Display results
+      const resultsList = document.getElementById('resultsList');
+      resultsList.innerHTML = '<h3>Your Results</h3>';
+      
+      // Create table
+      const table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.marginTop = '15px';
+      table.style.borderCollapse = 'collapse';
+      
+      // Add header
+      const thead = document.createElement('thead');
+      thead.innerHTML = `
+        <tr>
+          <th style="border-bottom: 1px solid #ddd; padding: 8px; text-align: left;">Round</th>
+          <th style="border-bottom: 1px solid #ddd; padding: 8px; text-align: left;">Breaths</th>
+          <th style="border-bottom: 1px solid #ddd; padding: 8px; text-align: left;">Hold Time</th>
+        </tr>
+      `;
+      table.appendChild(thead);
+      
+      // Add results
+      const tbody = document.createElement('tbody');
+      sessionResults.forEach(result => {
+        const row = document.createElement('tr');
+        
+        // Format hold time
+        const minutes = Math.floor(result.holdTime / 60);
+        const seconds = result.holdTime % 60;
+        const formattedTime = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        
+        row.innerHTML = `
+          <td style="border-bottom: 1px solid #ddd; padding: 8px;">Round ${result.round}</td>
+          <td style="border-bottom: 1px solid #ddd; padding: 8px;">${result.breathCount} breaths</td>
+          <td style="border-bottom: 1px solid #ddd; padding: 8px;">${formattedTime}</td>
+        `;
+        
+        tbody.appendChild(row);
+      });
+      
+      table.appendChild(tbody);
+      resultsList.appendChild(table);
+    }
+    
+    // Toggle pause/resume
+    function togglePause() {
+      isPaused = !isPaused;
+      pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+    }
+    
+    // Skip to the hold phase
+    function skipToHold() {
+      // Skip to hold phase
+      currentBreath = breathTarget;
+      breathCounter.textContent = `${currentBreath}/${breathTarget}`;
+      startHold();
+    }
+    
+    // Stop the session
+    function stopSession() {
+      // Clear all intervals
+      clearInterval(holdInterval);
+      clearInterval(breathingInterval);
+      clearInterval(recoveryInterval);
+      
+      // Return to setup
+      breathingPanel.classList.add('hidden');
+      setupPanel.classList.remove('hidden');
+    }
+    
+    // Save session results
+    function saveResults() {
+      // Convert session results to format for saving
+      const roundData = {};
+      sessionResults.forEach(result => {
+        roundData[`round_${result.round}`] = {
+          breath_count: result.breathCount,
+          hold_time: result.holdTime
+        };
+      });
+      
+      // Save via AJAX
+      fetch('{% url "wimhof_save_stats" %}', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+          session_id: {% if selected_session %}{{ selected_session.id }}{% else %}null{% endif %},
+          round_data: roundData
+        })
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === 'success') {
+          saveButton.textContent = 'Saved!';
+          saveButton.disabled = true;
+        } else {
+          alert('Error saving results: ' + (data.message || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        console.error('Error saving results:', error);
+        alert('Error saving results. Please try again.');
+      });
+    }
+    
+    // Restart session
+    function restartSession() {
+      resultsPanel.classList.add('hidden');
+      sessionResults = [];
+      currentRound = 0;
+      startRound();
+      breathingPanel.classList.remove('hidden');
+    }
+  });
+</script>
+{% endblock %}
