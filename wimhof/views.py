@@ -127,3 +127,4 @@ def view_stats(request):
     }
     
     return render(request, 'wimhof/view_stats.html', context)
+

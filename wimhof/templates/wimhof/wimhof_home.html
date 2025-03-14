@@ -28,23 +28,27 @@
     flex-direction: column;
     align-items: center;
     padding: 20px;
-    height: 1000px;
-
+    min-height: 100vh; /* Changed from fixed height to responsive */
+    box-sizing: border-box;
   }
   
   .circle {
-    
-    width: 180px;
-    height: 180px;
+    width: 30vmin; /* Responsive size based on viewport */
+    height: 30vmin; /* Responsive size based on viewport */
+    max-width: 200px; /* Maximum size limit */
+    max-height: 200px; /* Maximum size limit */
     border-radius: 50%;
     background-color: #4169E1;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 20px;
+    font-size: clamp(16px, 4vmin, 24px); /* Responsive font size */
     cursor: pointer;
     transition: transform 1.5s ease, background-color 0.3s ease;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1); /* Added subtle shadow */
+    text-align: center;
+    user-select: none; /* Prevent text selection */
   }
   
   .circle.inhale {
@@ -66,12 +70,12 @@
   }
   
   .breath-counter {
-    font-size: 48px;
+    font-size: clamp(32px, 8vmin, 48px); /* Responsive font size */
     margin: 20px 0;
   }
   
   .hold-timer {
-    font-size: 36px;
+    font-size: clamp(24px, 6vmin, 36px); /* Responsive font size */
     font-family: monospace;
   }
   
@@ -79,6 +83,8 @@
     display: flex;
     gap: 10px;
     margin-top: 20px;
+    flex-wrap: wrap; /* Allow buttons to wrap on small screens */
+    justify-content: center;
   }
   
   .controls button {
@@ -88,9 +94,57 @@
     background-color: #f8f9fa;
     border: 1px solid #dee2e6;
     cursor: pointer;
-    color: green;
+    color: #333;
+    min-width: 80px;
+    transition: background-color 0.2s;
+  }
+  
+  .controls button:hover {
+    background-color: #e9ecef;
+  }
+  
+  .controls button:active {
+    background-color: #dee2e6;
+  }
+  
+  /* New notification styles */
+  .notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px;
+    background-color: #fff;
+    border-left: 4px solid #4169E1;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    border-radius: 4px;
+    z-index: 1000;
+    max-width: 300px;
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+  }
+  
+  .notification.show {
+    transform: translateX(0);
+  }
+  
+  .notification.error {
+    border-left-color: #e74c3c;
+  }
+  
+  .notification.success {
+    border-left-color: #2ecc71;
+  }
+  
+  @media (max-width: 480px) {
+    .controls button {
+      flex: 1 0 100px;
+    }
   }
 </style>
+
+<div id="notification" class="notification">
+  <div id="notificationMessage"></div>
+</div>
 
 <div style="text-align: center; max-width: 600px; margin: 0 auto; padding: 20px;">
   <h1>WimHof Breathing</h1>
@@ -131,9 +185,19 @@
     {% endif %}
   </div>
   
+  <!-- Audio Test Panel -->
+  <div id="audioTestPanel" class="hidden" style="background: #f8f9fa; border-radius: 8px; padding: 15px; margin: 20px auto; max-width: 300px;">
+    <h3>Audio Check</h3>
+    <p>Click the button below to test audio. You should hear a sound.</p>
+    <button id="testAudioButton" style="width: 100%; padding: 12px; background: #4169E1; color: white; border: none; border-radius: 4px; margin-top: 15px; cursor: pointer;">Test Audio</button>
+    <div id="audioStatus" style="margin-top: 10px;">Audio not tested</div>
+    <button id="continueToBreathingButton" class="hidden" style="width: 100%; padding: 12px; background: #27ae60; color: white; border: none; border-radius: 4px; margin-top: 15px; cursor: pointer;">Continue</button>
+    <button id="skipAudioCheckButton" style="width: 100%; padding: 8px; background: transparent; color: #666; border: none; margin-top: 10px; cursor: pointer; text-decoration: underline;">Skip this check</button>
+  </div>
+  
   <!-- Breathing Panel -->
   <div id="breathingPanel" class="hidden breathing-container">
-    <div id="roundProgress" style="display: flex; margin-bottom: 20px;">
+    <div id="roundProgress" style="display: flex; margin-bottom: 20px; justify-content: center; flex-wrap: wrap;">
       <!-- Round indicators added dynamically -->
     </div>
     
@@ -159,9 +223,9 @@
     <h2>Session Complete!</h2>
     <div id="resultsList"></div>
     
-    <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px;">
-      <button id="saveButton" style="padding: 10px 15px; background: #4169E1; color: white; border: none; border-radius: 4px;">Save Results</button>
-      <button id="restartButton" style="padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px;">Start Again</button>
+    <div style="margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap;">
+      <button id="saveButton" style="padding: 10px 15px; background: #4169E1; color: white; border: none; border-radius: 4px; min-width: 120px;">Save Results</button>
+      <button id="restartButton" style="padding: 10px 15px; background: #f8f9fa; border: 1px solid #dee2e6; border-radius: 4px; min-width: 120px;">Start Again</button>
     </div>
   </div>
 </div>
@@ -170,9 +234,14 @@
   document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
     const setupPanel = document.getElementById('setupPanel');
+    const audioTestPanel = document.getElementById('audioTestPanel');
     const breathingPanel = document.getElementById('breathingPanel');
     const resultsPanel = document.getElementById('resultsPanel');
     const startButton = document.getElementById('startButton');
+    const testAudioButton = document.getElementById('testAudioButton');
+    const audioStatus = document.getElementById('audioStatus');
+    const continueToBreathingButton = document.getElementById('continueToBreathingButton');
+    const skipAudioCheckButton = document.getElementById('skipAudioCheckButton');
     const breathCircle = document.getElementById('breathCircle');
     const circleText = document.getElementById('circleText');
     const breathCounter = document.getElementById('breathCounter');
@@ -185,6 +254,8 @@
     const stopButton = document.getElementById('stopButton');
     const saveButton = document.getElementById('saveButton');
     const restartButton = document.getElementById('restartButton');
+    const notification = document.getElementById('notification');
+    const notificationMessage = document.getElementById('notificationMessage');
     
     // Session data
     const sessionData = {
@@ -197,8 +268,9 @@
             }{% if not forloop.last %},{% endif %}
           {% endfor %}
         {% else %}
-          { round: 1, breathCount: 20 },
-          { round: 2, breathCount: 30 }
+          { round: 1, breathCount: 30 },
+          { round: 2, breathCount: 30 },
+          { round: 3, breathCount: 30 }
         {% endif %}
       ]
     };
@@ -211,18 +283,241 @@
     let recoveryBreath = false;
     let isPaused = false;
     let holdStartTime = 0;
+    let holdDuration = 0;
+    let pauseStartTime = 0;
+    let totalPausedTime = 0;
     let holdInterval = null;
-    let breathingInterval = null;
+    let breathingTimeout = null;
     let recoveryInterval = null;
     let sessionResults = [];
+    let audioTested = false;
+    let audioSupported = true;
+    
+    // Timer class for better timing management
+    class Timer {
+      constructor(callback, interval) {
+        this.callback = callback;
+        this.interval = interval;
+        this.startTime = null;
+        this.expected = null;
+        this.timeout = null;
+        this.paused = false;
+        this.pausedAt = null;
+        this.totalPausedTime = 0;
+      }
+      
+      start() {
+        this.paused = false;
+        this.startTime = Date.now();
+        this.expected = this.startTime + this.interval;
+        this.timeout = setTimeout(this.step.bind(this), this.interval);
+      }
+      
+      step() {
+        const now = Date.now();
+        const drift = now - this.expected;
+        
+        if (this.paused) return;
+        
+        // Call callback
+        this.callback();
+        
+        // Recalculate timing
+        this.expected += this.interval;
+        const nextDelay = Math.max(0, this.interval - drift);
+        this.timeout = setTimeout(this.step.bind(this), nextDelay);
+      }
+      
+      pause() {
+        if (this.paused) return;
+        
+        this.paused = true;
+        this.pausedAt = Date.now();
+        clearTimeout(this.timeout);
+      }
+      
+      resume() {
+        if (!this.paused) return;
+        
+        this.totalPausedTime += Date.now() - this.pausedAt;
+        this.paused = false;
+        this.expected = Date.now() + this.interval;
+        this.timeout = setTimeout(this.step.bind(this), this.interval);
+      }
+      
+      stop() {
+        clearTimeout(this.timeout);
+      }
+    }
+    
+    // Save state to localStorage for recovery
+    function saveState() {
+      const state = {
+        currentRound,
+        currentBreath,
+        breathTarget,
+        holdingBreath,
+        recoveryBreath,
+        isPaused,
+        holdStartTime,
+        holdDuration,
+        sessionResults,
+        // Don't save session data, as it's from the server
+        lastUpdated: Date.now()
+      };
+      
+      try {
+        localStorage.setItem('wimHofSessionState', JSON.stringify(state));
+      } catch (e) {
+        showNotification('Unable to save session state locally', 'error');
+        console.error('Error saving state to localStorage:', e);
+      }
+    }
+    
+    // Try to restore state
+    function tryRestoreState() {
+      try {
+        const savedState = localStorage.getItem('wimHofSessionState');
+        if (!savedState) return false;
+        
+        const state = JSON.parse(savedState);
+        
+        // Check if state is too old (more than 30 minutes)
+        if (Date.now() - state.lastUpdated > 30 * 60 * 1000) {
+          localStorage.removeItem('wimHofSessionState');
+          return false;
+        }
+        
+        // Confirm with user
+        if (!confirm('Would you like to restore your previous session?')) {
+          localStorage.removeItem('wimHofSessionState');
+          return false;
+        }
+        
+        // Restore state
+        currentRound = state.currentRound;
+        currentBreath = state.currentBreath;
+        breathTarget = state.breathTarget;
+        holdingBreath = state.holdingBreath;
+        recoveryBreath = state.recoveryBreath;
+        isPaused = state.isPaused;
+        holdStartTime = state.holdStartTime;
+        holdDuration = state.holdDuration;
+        sessionResults = state.sessionResults;
+        
+        // Update UI based on the state
+        setupPanel.classList.add('hidden');
+        breathingPanel.classList.remove('hidden');
+        
+        if (holdingBreath) {
+          // Resume hold
+          breathCircle.className = 'circle hold';
+          circleText.textContent = 'Click When Ready';
+          stateText.textContent = 'Hold Your Breath';
+          breathCounter.textContent = 'Hold';
+          holdInterval = setInterval(updateHoldTimer, 1000);
+        } else if (recoveryBreath) {
+          // Resume recovery
+          breathCircle.className = 'circle recovery';
+          circleText.textContent = 'Recovery Breath';
+          stateText.textContent = 'Deep Breath In & Hold';
+        } else {
+          // Resume normal breathing
+          startRound();
+          breathCounter.textContent = `${currentBreath}/${breathTarget}`;
+        }
+        
+        createRoundIndicators();
+        roundTitle.textContent = `Round ${currentRound + 1}`;
+        
+        return true;
+      } catch (e) {
+        console.error('Error restoring state:', e);
+        localStorage.removeItem('wimHofSessionState');
+        return false;
+      }
+    }
     
     // Sound elements (preload sounds)
     const inhaleSound = new Audio("{% static 'home/inhale.mp3' %}");
     const exhaleSound = new Audio("{% static 'home/exhale.mp3' %}");
     const holdSound = new Audio("{% static 'home/hold.mp3' %}");
+    const testSound = new Audio("{% static 'home/inhale.mp3' %}");
+    
+    // Sound playing with error handling
+    function playSound(sound) {
+      if (!audioSupported) return;
+      
+      const promise = sound.play();
+      
+      if (promise !== undefined) {
+        promise.catch(error => {
+          console.error('Audio play error:', error);
+          // If we get an error, we'll still try next time
+          // but won't show repeated errors
+        });
+      }
+    }
+    
+    // Test audio support
+    function testAudio() {
+      audioStatus.textContent = 'Testing audio...';
+      
+      const promise = testSound.play();
+      
+      if (promise !== undefined) {
+        promise.then(() => {
+          audioTested = true;
+          audioSupported = true;
+          audioStatus.textContent = '✅ Audio working!';
+          continueToBreathingButton.classList.remove('hidden');
+        }).catch(error => {
+          console.error('Audio test failed:', error);
+          audioTested = true;
+          audioSupported = false;
+          audioStatus.textContent = '❌ Audio not supported on this device. You can continue without sound.';
+          continueToBreathingButton.classList.remove('hidden');
+        });
+      } else {
+        // Old browsers that don't return a promise
+        audioTested = true;
+        audioSupported = true;
+        audioStatus.textContent = '✅ Audio seems to be working!';
+        continueToBreathingButton.classList.remove('hidden');
+      }
+    }
+    
+    // Show notification
+    function showNotification(message, type = 'info') {
+      notificationMessage.textContent = message;
+      notification.className = 'notification show';
+      
+      if (type) {
+        notification.classList.add(type);
+      }
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+      }, 5000);
+    }
     
     // Event listeners
-    startButton.addEventListener('click', startSession);
+    const sessionSelect = document.getElementById('sessionSelect');
+    sessionSelect.addEventListener('change', function() {
+      // Get the selected session ID
+      const selectedSessionId = this.value;
+      // Redirect to the page with the selected session
+      window.location.href = `?session_id=${selectedSessionId}`;
+    });
+    
+    startButton.addEventListener('click', startAudioTest);
+    testAudioButton.addEventListener('click', testAudio);
+    continueToBreathingButton.addEventListener('click', startSession);
+    skipAudioCheckButton.addEventListener('click', () => {
+      audioSupported = false;
+      audioTested = true;
+      startSession();
+    });
     breathCircle.addEventListener('click', handleCircleClick);
     pauseButton.addEventListener('click', togglePause);
     skipButton.addEventListener('click', skipToHold);
@@ -230,7 +525,23 @@
     saveButton.addEventListener('click', saveResults);
     restartButton.addEventListener('click', restartSession);
     
+    // Check for saved session
+    window.addEventListener('load', () => {
+      if (tryRestoreState()) {
+        showNotification('Previous session restored!', 'success');
+      }
+    });
+    
+    // Save state periodically (every 5 seconds)
+    setInterval(saveState, 5000);
+    
     // -------- Functions --------
+    
+    // Start the audio test
+    function startAudioTest() {
+      setupPanel.classList.add('hidden');
+      audioTestPanel.classList.remove('hidden');
+    }
     
     // Initialize the round indicators
     function createRoundIndicators() {
@@ -241,6 +552,8 @@
         indicator.className = 'round-indicator';
         if (i === currentRound) {
           indicator.classList.add('active');
+        } else if (i < currentRound) {
+          indicator.classList.add('completed');
         }
         roundProgress.appendChild(indicator);
       }
@@ -249,11 +562,14 @@
     // Start the breathing session
     function startSession() {
       console.log('Starting session');
-      setupPanel.classList.add('hidden');
+      audioTestPanel.classList.add('hidden');
       breathingPanel.classList.remove('hidden');
       
-      currentRound = 0;
-      startRound();
+      // Only reset to first round if not restoring
+      if (currentRound === 0 && currentBreath === 0) {
+        currentRound = 0;
+        startRound();
+      }
     }
     
     // Initialize a round
@@ -263,11 +579,13 @@
       // Update round indicators
       createRoundIndicators();
       
-      // Reset state
+      // Reset state for the new round
       currentBreath = 0;
       breathTarget = sessionData.rounds[currentRound].breathCount;
       holdingBreath = false;
       recoveryBreath = false;
+      isPaused = false;
+      pauseButton.textContent = 'Pause';
       
       // Update UI
       roundTitle.textContent = `Round ${currentRound + 1}`;
@@ -276,10 +594,14 @@
       circleText.textContent = 'Start';
       breathCircle.className = 'circle';
       holdTimer.textContent = '';
+      
+      saveState();
     }
     
     // Handle circle clicks
     function handleCircleClick() {
+      if (isPaused) return; // Prevent actions when paused
+      
       console.log('Circle clicked, state:', { holdingBreath, recoveryBreath });
       
       if (circleText.textContent === 'Start') {
@@ -313,16 +635,16 @@
       }
       
       // Inhale
-      inhaleSound.play().catch(e => console.log('Audio error:', e));
+      playSound(inhaleSound);
       breathCircle.classList.add('inhale');
       circleText.textContent = 'Inhale';
       stateText.textContent = 'Inhale';
       
       // After 1.5s, exhale
-      setTimeout(() => {
+      breathingTimeout = setTimeout(() => {
         if (isPaused) return;
         
-        exhaleSound.play().catch(e => console.log('Audio error:', e));
+        playSound(exhaleSound);
         breathCircle.classList.remove('inhale');
         circleText.textContent = 'Exhale';
         stateText.textContent = 'Exhale';
@@ -330,9 +652,10 @@
         // Increment breath counter
         currentBreath++;
         breathCounter.textContent = `${currentBreath}/${breathTarget}`;
+        saveState();
         
         // Schedule next breath
-        setTimeout(() => {
+        breathingTimeout = setTimeout(() => {
           if (isPaused) return;
           breatheCycle();
         }, 1500);
@@ -344,7 +667,8 @@
       console.log('Starting hold phase');
       
       holdingBreath = true;
-      holdSound.play().catch(e => console.log('Audio error:', e));
+      playSound(holdSound);
+      totalPausedTime = 0;
       
       // Update UI
       breathCircle.className = 'circle hold';
@@ -355,22 +679,31 @@
       // Start hold timer
       holdStartTime = Date.now();
       holdInterval = setInterval(updateHoldTimer, 1000);
+      
+      saveState();
     }
     
     // Update the hold timer
     function updateHoldTimer() {
-      const elapsed = Math.floor((Date.now() - holdStartTime) / 1000);
+      if (isPaused) return;
+      
+      const elapsed = Math.floor((Date.now() - holdStartTime - totalPausedTime) / 1000);
+      holdDuration = elapsed;
       const minutes = Math.floor(elapsed / 60);
       const seconds = elapsed % 60;
       holdTimer.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      
+      // Save periodically (every 3 seconds)
+      if (elapsed % 3 === 0) {
+        saveState();
+      }
     }
     
     // End the hold phase
     function endHold() {
       console.log('Ending hold phase');
       
-      // Calculate hold duration
-      const holdDuration = Math.floor((Date.now() - holdStartTime) / 1000);
+      // Calculate hold duration (account for pauses)
       clearInterval(holdInterval);
       
       // Save the result
@@ -379,6 +712,8 @@
         breathCount: breathTarget,
         holdTime: holdDuration
       });
+      
+      saveState();
       
       // Start recovery
       startRecovery();
@@ -390,7 +725,7 @@
       
       holdingBreath = false;
       recoveryBreath = true;
-      inhaleSound.play().catch(e => console.log('Audio error:', e));
+      playSound(inhaleSound);
       
       // Update UI
       breathCircle.className = 'circle recovery';
@@ -403,6 +738,8 @@
       
       // Start countdown
       recoveryInterval = setInterval(() => {
+        if (isPaused) return;
+        
         secondsLeft--;
         holdTimer.textContent = secondsLeft;
         
@@ -411,6 +748,8 @@
           finishRound();
         }
       }, 1000);
+      
+      saveState();
     }
     
     // Finish the current round
@@ -430,6 +769,8 @@
         startRound();
       } else {
         showResults();
+        // Clear saved state since session is complete
+        localStorage.removeItem('wimHofSessionState');
       }
     }
     
@@ -488,10 +829,34 @@
     function togglePause() {
       isPaused = !isPaused;
       pauseButton.textContent = isPaused ? 'Resume' : 'Pause';
+      
+      if (isPaused) {
+        // Pause everything
+        if (breathingTimeout) clearTimeout(breathingTimeout);
+        if (holdInterval) {
+          pauseStartTime = Date.now();
+        }
+      } else {
+        // Resume
+        if (holdingBreath) {
+          // Update totalPausedTime
+          totalPausedTime += (Date.now() - pauseStartTime);
+          // Restart hold timer
+          holdInterval = setInterval(updateHoldTimer, 1000);
+        } else if (!recoveryBreath) {
+          // Resume breathing where we left off
+          breatheCycle();
+        }
+      }
+      
+      saveState();
     }
     
     // Skip to the hold phase
     function skipToHold() {
+      // Clear any existing timeouts
+      if (breathingTimeout) clearTimeout(breathingTimeout);
+      
       // Skip to hold phase
       currentBreath = breathTarget;
       breathCounter.textContent = `${currentBreath}/${breathTarget}`;
@@ -500,10 +865,18 @@
     
     // Stop the session
     function stopSession() {
+      // Confirm with user
+      if (!confirm('Are you sure you want to end the session? Your progress will be lost.')) {
+        return;
+      }
+      
       // Clear all intervals
       clearInterval(holdInterval);
-      clearInterval(breathingInterval);
+      clearTimeout(breathingTimeout);
       clearInterval(recoveryInterval);
+      
+      // Clear saved state
+      localStorage.removeItem('wimHofSessionState');
       
       // Return to setup
       breathingPanel.classList.add('hidden');
@@ -512,6 +885,10 @@
     
     // Save session results
     function saveResults() {
+      // Disable button while saving
+      saveButton.disabled = true;
+      saveButton.textContent = 'Saving...';
+      
       // Convert session results to format for saving
       const roundData = {};
       sessionResults.forEach(result => {
@@ -533,18 +910,25 @@
           round_data: roundData
         })
       })
-      .then(response => response.json())
+      .then(response => {
+        if (!response.ok) {
+          throw new Error('Server error: ' + response.status);
+        }
+        return response.json();
+      })
       .then(data => {
         if (data.status === 'success') {
           saveButton.textContent = 'Saved!';
-          saveButton.disabled = true;
+          showNotification('Results saved successfully!', 'success');
         } else {
-          alert('Error saving results: ' + (data.message || 'Unknown error'));
+          throw new Error(data.message || 'Unknown error');
         }
       })
       .catch(error => {
         console.error('Error saving results:', error);
-        alert('Error saving results. Please try again.');
+        saveButton.disabled = false;
+        saveButton.textContent = 'Try Again';
+        showNotification('Error saving results: ' + error.message, 'error');
       });
     }
     
@@ -553,9 +937,21 @@
       resultsPanel.classList.add('hidden');
       sessionResults = [];
       currentRound = 0;
+      currentBreath = 0;
       startRound();
       breathingPanel.classList.remove('hidden');
     }
+    
+    // Handle visibility change (tab switching)
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        // Page is hidden, pause if active
+        if (!isPaused && (holdingBreath || currentBreath > 0)) {
+          togglePause();
+          showNotification('Session paused because you switched tabs', 'info');
+        }
+      }
+    });
   });
 </script>
 {% endblock %}

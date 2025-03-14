@@ -7,4 +7,5 @@ urlpatterns = [
     path('session/<int:session_id>/', views.session_detail, name='wimhof_session_detail'),
     path('stats/', views.view_stats, name='wimhof_stats'),
     path('save-stats/', views.save_stats, name='wimhof_save_stats'),
+    
 ]
